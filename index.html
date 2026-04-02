@@ -1,0 +1,330 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#1a1d23">
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/824/824411.png">
+    <title>Med Basha v96.1 - Fix Dietas</title>
+    
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+        const firebaseConfig = {
+            apiKey: "AIzaSyCLi_wlkO5zB52s6Kegc6ANZVeH6mHP5DY",
+            authDomain: "misturnos-fe3ea.firebaseapp.com",
+            projectId: "misturnos-fe3ea",
+            storageBucket: "misturnos-fe3ea.firebasestorage.app",
+            messagingSenderId: "1029095925443",
+            appId: "1:1029095925443:web:873240d85ac5160f392476",
+            measurementId: "G-B6RRDBDM4R"
+        };
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        window.cloudSave = async (dbName, data) => { try { await setDoc(doc(db, "usuarios", "conductor_menorca", "datos", dbName), { payload: data }); } catch (e) { console.error(e); } };
+        window.setupSync = (dbName, callback) => { onSnapshot(doc(db, "usuarios", "conductor_menorca", "datos", dbName), (doc) => { if (doc.exists()) callback(doc.data().payload); }); };
+    </script>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script defer src="https://unpkg.com/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" rel="stylesheet" />
+    
+    <style>
+        [x-cloak] { display: none !important; }
+        body { background-color: #1a1d23; color: #e2e8f0; font-family: 'Inter', sans-serif; -webkit-tap-highlight-color: transparent; }
+        .card-main { background: #23272e; border-radius: 1.2rem; border: 2px solid #2d333f; overflow: hidden; }
+        .block-hora { background-color: #1e293b; padding: 12px; }
+        input { background: transparent; border: none; color: white; font-weight: 800; outline: none; width: 100%; }
+        input[type="time"] { font-size: 1.8rem; color: #60a5fa; }
+        input[type="number"] { font-size: 1.5rem; color: #22d3ee; }
+        .label-custom { font-size: 10px; font-weight: 900; text-transform: uppercase; }
+        .nav-btn { flex: 1; padding: 16px; text-align: center; font-weight: 900; border-bottom: 4px solid transparent; }
+        .nav-active { border-color: #3b82f6; color: #3b82f6; background: #23272e; }
+        .badge-aviso { animation: pulse 2s infinite; background-color: #facc15 !important; color: #000 !important; }
+        @keyframes pulse { 0% { opacity: 1; } 50% { opacity: 0.7; } 100% { opacity: 1; } }
+        .dot-blue { width: 5px; height: 5px; background: #3b82f6; border-radius: 50%; margin-top: 3px; }
+        .dot-orange { width: 5px; height: 5px; background: #f97316; border-radius: 50%; margin-top: 3px; }
+    </style>
+</head>
+<body x-data="tmsaApp()" x-init="initApp()">
+
+    <nav class="flex sticky top-0 z-50 bg-[#1a1d23] border-b border-white/10">
+        <button @click="view = 'registro'" :class="view === 'registro' ? 'nav-active' : 'text-gray-500'" class="nav-btn">REGISTRO</button>
+        <button @click="view = 'historial'" :class="view === 'historial' ? 'nav-active' : 'text-gray-500'" class="nav-btn">RESUMEN</button>
+    </nav>
+
+    <main x-show="view === 'registro'" class="p-4 space-y-4 pb-44" x-cloak>
+        <div class="card-main p-3">
+            <div class="flex justify-between items-center mb-2 text-xs font-black text-blue-400 uppercase">
+                <span x-text="mesNombre + ' ' + año"></span>
+                <div class="flex items-center gap-2">
+                    <button @click="irMesActual()" class="text-[9px] bg-blue-600/20 text-blue-400 px-2 py-1 rounded-md border border-blue-500/30 font-black">HOY</button>
+                    <button @click="cambiarMes(-1)" class="material-symbols-outlined p-1">chevron_left</button>
+                    <button @click="cambiarMes(1)" class="material-symbols-outlined p-1">chevron_right</button>
+                </div>
+            </div>
+            <div class="grid grid-cols-7 gap-1 text-center font-bold text-sm">
+                <template x-for="dia in diasCalendario" :key="dia.fecha">
+                    <div @click="seleccionarDia(dia.fecha)" class="py-2 flex flex-col items-center cursor-pointer">
+                        <span :class="[dia.isHoy ? 'bg-white text-black rounded-lg px-2 font-black' : 'text-gray-300', dia.fecha === fechaSeleccionada ? 'border-2 border-blue-500 rounded-lg px-1.5' : '']" x-text="dia.num"></span>
+                        <div x-show="getTipoJornada(dia.fecha) === 'continua'" class="dot-blue"></div>
+                        <div x-show="getTipoJornada(dia.fecha) === 'partida'" class="dot-orange"></div>
+                    </div>
+                </template>
+            </div>
+        </div>
+
+        <section class="card-main">
+            <div class="p-3 bg-black/30 flex justify-between items-center border-b border-black/20">
+                <span class="text-[10px] font-black uppercase text-gray-400">Turno 1 / Mañana</span>
+                <div class="flex items-center gap-2">
+                    <span class="text-[10px] font-black text-yellow-500">BUS:</span>
+                    <input type="text" x-model="form.bus1" class="w-14 bg-black/40 text-center rounded-lg py-1 text-yellow-400 font-black text-xl uppercase">
+                </div>
+            </div>
+            <div class="grid grid-cols-2 border-b border-black/20">
+                <div class="block-hora border-r border-black/10">
+                    <div class="flex justify-between items-center mb-1">
+                        <label class="label-custom text-blue-300">Entrada</label>
+                        <button x-show="alarmaDisponible" @click="lanzarAlarma()" class="bg-blue-600 text-[9px] px-2 py-0.5 rounded-full font-black flex items-center gap-1">
+                            <span class="material-symbols-outlined text-[12px]">alarm</span> <span x-text="horaAlarmaStr"></span>
+                        </button>
+                    </div>
+                    <input type="time" x-model="form.horaE1" @input="calcularTodo(); sugerirAlarma()">
+                </div>
+                <div class="block-hora">
+                    <label class="label-custom text-red-400">Salida</label>
+                    <input type="time" x-model="form.horaS1" @input="validarYCalcular()">
+                </div>
+            </div>
+            <div class="grid grid-cols-2 bg-black/10">
+                <div class="block-hora border-r border-black/10"><label class="label-custom text-cyan-400">KM Inicio</label><input type="number" x-model="form.kmI1" @input="calcularTodo()" placeholder="0"></div>
+                <div class="block-hora"><label class="label-custom text-cyan-400">KM Fin</label><input type="number" x-model="form.kmF1" @input="calcularTodo()" placeholder="0"></div>
+            </div>
+        </section>
+
+        <section class="card-main">
+            <div class="p-3 bg-black/30 border-b border-black/20 text-[10px] font-black uppercase text-gray-400">Turno 2 / Tarde (Partido)</div>
+            <div class="grid grid-cols-2 border-b border-black/20">
+                <div class="block-hora border-r border-black/10"><label class="label-custom text-blue-300">Entrada 2</label><input type="time" x-model="form.horaE2" @input="calcularTodo()"></div>
+                <div class="block-hora"><label class="label-custom text-red-400">Salida 2</label><input type="time" x-model="form.horaS2" @input="calcularTodo()"></div>
+            </div>
+            <div class="grid grid-cols-2 bg-black/10">
+                <div class="block-hora border-r border-black/10"><label class="label-custom text-cyan-400">KM Inicio 2</label><input type="number" x-model="form.kmI2" @input="calcularTodo()" placeholder="0"></div>
+                <div class="block-hora"><label class="label-custom text-cyan-400">KM Fin 2</label><input type="number" x-model="form.kmF2" @input="calcularTodo()" placeholder="0"></div>
+            </div>
+        </section>
+
+        <div class="grid grid-cols-2 gap-3">
+            <button @click="toggleDiet('comida')" :class="estiloBoton(form.comida)" class="py-5 rounded-2xl border-2 flex flex-col items-center gap-1 shadow-lg">
+                <span class="material-symbols-outlined text-2xl">restaurant</span>
+                <span class="text-[10px] font-black uppercase" x-text="form.comida === 'AVISO' ? '¿Comida?' : 'Comida'"></span>
+            </button>
+            <button @click="toggleDiet('cena')" :class="estiloBoton(form.cena)" class="py-5 rounded-2xl border-2 flex flex-col items-center gap-1 shadow-lg">
+                <span class="material-symbols-outlined text-2xl">dinner_dining</span>
+                <span class="text-[10px] font-black uppercase" x-text="form.cena === 'AVISO' ? '¿Cena?' : 'Cena'"></span>
+            </button>
+        </div>
+
+        <div class="flex gap-3">
+            <button @click="guardarJornada()" class="flex-1 py-5 bg-blue-700 text-white font-black rounded-2xl shadow-xl uppercase text-sm border-b-4 border-blue-900 active:scale-95 transition-all">Archivar Jornada</button>
+            <button @click="view = 'historial'" class="px-6 bg-violet-700 text-white font-black rounded-2xl shadow-xl uppercase text-[10px] border-b-4 border-violet-950 active:scale-95 transition-all flex flex-col items-center justify-center gap-1">
+                <span class="material-symbols-outlined text-base">folder_managed</span>
+                <span>Archivados</span>
+            </button>
+        </div>
+    </main>
+
+    <main x-show="view === 'historial'" class="p-4 space-y-4 pb-24" x-cloak>
+        <template x-for="semana in historyByWeeks" :key="semana.num">
+            <div class="card-main mb-5">
+                <div class="bg-blue-900/30 p-2.5 border-b border-white/5 flex justify-between items-center">
+                    <span class="text-[11px] font-black text-blue-400 uppercase" x-text="'Semana ' + semana.num"></span>
+                    <div class="flex gap-3 text-[10px] font-bold">
+                        <span class="text-white" x-text="semana.totalH.toFixed(2) + 'h'"></span>
+                        <span class="text-cyan-400" x-text="semana.totalK + 'km'"></span>
+                        <span class="text-indigo-400" x-text="semana.totalN.toFixed(2) + 'n'"></span>
+                    </div>
+                </div>
+                <table class="w-full text-[11px]">
+                    <thead class="bg-black/40 text-[9px] text-gray-500 font-black uppercase">
+                        <tr>
+                            <th class="p-2.5 pl-4 text-left">Día</th>
+                            <th>Bus</th>
+                            <th class="text-right">Horas</th>
+                            <th class="text-right">NOC</th>
+                            <th class="text-right">KM</th>
+                            <th class="text-right pr-4">X</th>
+                        </tr>
+                    </thead>
+                    <tbody class="font-bold">
+                        <template x-for="item in semana.dias" :key="item.fecha">
+                            <tr class="border-b border-white/5">
+                                <td class="p-2.5 pl-4 text-white" x-text="item.fecha.split('-').reverse()[0] + '/' + item.fecha.split('-')[1]"></td>
+                                <td class="text-yellow-500 text-center uppercase" x-text="item.bus"></td>
+                                <td class="text-white text-right font-black" x-text="item.hStr"></td>
+                                <td class="text-indigo-400 text-right" x-text="item.noctH > 0 ? item.noctH.toFixed(2) : '-'"></td>
+                                <td class="text-cyan-400 text-right" x-text="item.km"></td>
+                                <td class="text-right pr-4 p-1"><button @click="borrarFila(item.fecha)" class="material-symbols-outlined text-red-500/30 text-base p-1.5">delete</button></td>
+                            </tr>
+                        </template>
+                    </tbody>
+                </table>
+            </div>
+        </template>
+    </main>
+
+    <footer x-show="view === 'registro'" class="fixed bottom-0 left-0 w-full p-5 bg-[#1a1d23]/95 border-t border-white/10 flex justify-between items-center z-50">
+        <div><span class="text-[10px] text-gray-400 font-black uppercase tracking-widest">KM Totales</span><p class="text-2xl font-black text-cyan-400" x-text="res.kmTotales"></p></div>
+        <div class="text-right"><span class="text-[10px] text-yellow-500 font-black uppercase tracking-widest">Total Jornada</span><p class="text-5xl font-black text-white" x-text="res.total"></p></div>
+    </footer>
+
+    <script>
+        function tmsaApp() {
+            return {
+                view: 'registro', fechaSeleccionada: new Date().toISOString().split('T')[0],
+                form: { bus1: '', horaE1: '', horaS1: '', kmI1: '', kmF1: '', horaE2: '', horaS2: '', kmI2: '', kmF2: '', comida: 'NO', cena: 'NO' },
+                res: { total: '00:00', kmTotales: 0, realMin: 0, noctMin: 0 },
+                history: [], mes: new Date().getMonth(), año: new Date().getFullYear(), mesNombre: '', diasCalendario: [],
+                alarmaDisponible: false, horaAlarmaStr: '',
+
+                initApp() {
+                    this.history = JSON.parse(localStorage.getItem('tmsa_history_v95') || '[]');
+                    window.setupSync('history', (data) => { if(data) { this.history = data; this.renderCalendario(); }});
+                    this.renderCalendario(); this.cargarHojaDesdeMemoria();
+                },
+                getTipoJornada(f) {
+                    const dia = this.history.find(i => i.fecha === f);
+                    if (!dia) return null;
+                    const saved = JSON.parse(localStorage.getItem('tmsa_drafts_v95') || '{}');
+                    const d = saved[f];
+                    if (d && (d.horaE2 || d.horaS2)) return 'partida';
+                    return 'continua';
+                },
+                sugerirAlarma() {
+                    if (!this.form.horaE1) { this.alarmaDisponible = false; return; }
+                    let [h, m] = this.form.horaE1.split(':').map(Number);
+                    let d = new Date(); d.setHours(h, m, 0); d.setMinutes(d.getMinutes() - 45); 
+                    this.horaAlarmaStr = d.getHours().toString().padStart(2,'0') + ":" + d.getMinutes().toString().padStart(2,'0');
+                    this.alarmaDisponible = true;
+                },
+                lanzarAlarma() {
+                    let [h, m] = this.horaAlarmaStr.split(':');
+                    window.location.href = `intent://#Intent;action=android.intent.action.SET_ALARM;i.android.intent.extra.alarm.HOUR=${parseInt(h)};i.android.intent.extra.alarm.MINUTES=${parseInt(m)};s.android.intent.extra.alarm.MESSAGE=Med Basha;b.android.intent.extra.alarm.SKIP_UI=false;end`;
+                },
+                calcNoct(ini, fin) {
+                    if(!ini || !fin) return 0;
+                    let dE = new Date("2000-01-01T" + ini); let dS = new Date("2000-01-01T" + fin);
+                    if(dS <= dE) dS.setDate(dS.getDate() + 1);
+                    let totalNoct = 0; let curr = new Date(dE);
+                    while(curr < dS) { let h = curr.getHours(); if(h >= 22 || h < 6) totalNoct++; curr.setMinutes(curr.getMinutes() + 1); }
+                    return totalNoct / 60;
+                },
+                calcularTodo() {
+                    let totalMin = 0;
+                    let n1 = this.calcNoct(this.form.horaE1, this.form.horaS1); 
+                    let n2 = this.calcNoct(this.form.horaE2, this.form.horaS2);
+                    this.res.noctMin = (n1 + n2);
+                    
+                    if(this.form.horaE1 && this.form.horaS1) {
+                        let dE1 = new Date("2000-01-01T" + this.form.horaE1); 
+                        let dS1 = new Date("2000-01-01T" + this.form.horaS1);
+                        if(dS1 <= dE1) dS1.setDate(dS1.getDate() + 1); 
+                        totalMin += (dS1 - dE1) / 60000;
+                    }
+                    if(this.form.horaE2 && this.form.horaS2) {
+                        let dE2 = new Date("2000-01-01T" + this.form.horaE2); 
+                        let dS2 = new Date("2000-01-01T" + this.form.horaS2);
+                        if(dS2 <= dE2) dS2.setDate(dS2.getDate() + 1); 
+                        totalMin += (dS2 - dE2) / 60000;
+                    }
+                    this.res.realMin = totalMin;
+
+                    // LÓGICA DE DIETAS REPARADA
+                    let hFin = this.form.horaS2 || this.form.horaS1; 
+                    let hIni = this.form.horaE1; 
+                    let hTotal = totalMin / 60;
+
+                    // Comida: Solo si empiezas antes de las 14:00
+                    if (hIni && hIni < "14:00") {
+                        if ((hTotal >= 6 && hFin >= "15:30") || (hTotal >= 9) || (hFin >= "15:00" && hFin < "15:30")) this.form.comida = "SI";
+                        else if (hFin >= "14:30") this.form.comida = "AVISO"; 
+                        else this.form.comida = "NO";
+                    } else {
+                        this.form.comida = "NO";
+                    }
+
+                    // Cena: Terminar a las 23:00 o después
+                    if (hFin && (hFin >= "23:00" || (hFin >= "00:00" && hFin < "06:00"))) {
+                        this.form.cena = "SI";
+                    } else if (hFin && hFin >= "22:00") {
+                        this.form.cena = "AVISO";
+                    } else {
+                        this.form.cena = "NO";
+                    }
+
+                    let k1 = (parseInt(this.form.kmF1) - parseInt(this.form.kmI1)) || 0; 
+                    let k2 = (parseInt(this.form.kmF2) - parseInt(this.form.kmI2)) || 0;
+                    this.res.kmTotales = (k1 > 0 ? k1 : 0) + (k2 > 0 ? k2 : 0);
+                    let dVisualMin = totalMin < 360 && totalMin > 0 ? 360 : totalMin;
+                    this.res.total = Math.floor(dVisualMin/60).toString().padStart(2,'0') + ":" + Math.round(dVisualMin%60).toString().padStart(2,'0');
+                    this.saveDraft();
+                },
+                get historyByWeeks() {
+                    const mesSel = `${this.año}-${String(this.mes+1).padStart(2,'0')}`;
+                    let filtered = this.history.filter(i => i.fecha.startsWith(mesSel)).sort((a,b) => a.fecha.localeCompare(b.fecha));
+                    let weeks = {};
+                    filtered.forEach(item => {
+                        let d = new Date(item.fecha); let diaSem = d.getDay() === 0 ? 6 : d.getDay() - 1; let lunes = new Date(d);
+                        lunes.setDate(d.getDate() - diaSem); let wNum = lunes.toLocaleDateString();
+                        if (!weeks[wNum]) {
+                            let tempDate = new Date(d.getFullYear(), 0, 1); let isoNum = Math.ceil((((d - tempDate) / 86400000) + tempDate.getDay() + 1) / 7);
+                            weeks[wNum] = { num: isoNum, dias: [], totalH: 0, totalK: 0, totalN: 0 };
+                        }
+                        weeks[wNum].dias.push(item); let [h, m] = item.hStr.split(':').map(Number);
+                        weeks[wNum].totalH += h + (m/60); weeks[wNum].totalK += item.km || 0; weeks[wNum].totalN += item.noctH || 0;
+                    });
+                    return Object.values(weeks).sort((a,b) => b.num - a.num);
+                },
+                irMesActual() { const hoy = new Date(); this.mes = hoy.getMonth(); this.año = hoy.getFullYear(); this.renderCalendario(); },
+                estiloBoton(estado) { if (estado === 'SI') return 'bg-green-600 border-green-400 text-white'; if (estado === 'AVISO') return 'badge-aviso border-yellow-600'; return 'bg-gray-800 border-gray-700 text-gray-500'; },
+                toggleDiet(type) { this.form[type] = (this.form[type] === 'SI' ? 'NO' : 'SI'); this.saveDraft(); },
+                validarYCalcular() { if (this.form.horaS1 && !this.form.horaE1) { alert("¡Falta entrada!"); this.form.horaS1 = ''; return; } this.calcularTodo(); },
+                renderCalendario() {
+                    const days = new Date(this.año, this.mes + 1, 0).getDate();
+                    this.mesNombre = new Intl.DateTimeFormat('es-ES', { month: 'long' }).format(new Date(this.año, this.mes));
+                    this.diasCalendario = [];
+                    for(let i=1; i<=days; i++) {
+                        let f = `${this.año}-${String(this.mes+1).padStart(2,'0')}-${String(i).padStart(2,'0')}`;
+                        this.diasCalendario.push({ num: i, fecha: f, isHoy: f === new Date().toISOString().split('T')[0] });
+                    }
+                },
+                seleccionarDia(f) { this.fechaSeleccionada = f; this.cargarHojaDesdeMemoria(); },
+                cambiarMes(v) { this.mes += v; if(this.mes<0){this.mes=11;this.año--} if(this.mes>11){this.mes=0;this.año++} this.renderCalendario(); },
+                cargarHojaDesdeMemoria() {
+                    const saved = JSON.parse(localStorage.getItem('tmsa_drafts_v95') || '{}');
+                    this.form = saved[this.fechaSeleccionada] || { bus1: '', horaE1: '', horaS1: '', kmI1: '', kmF1: '', horaE2: '', horaS2: '', kmI2: '', kmF2: '', comida: 'NO', cena: 'NO' };
+                    this.calcularTodo(); this.sugerirAlarma();
+                },
+                saveDraft() {
+                    const saved = JSON.parse(localStorage.getItem('tmsa_drafts_v95') || '{}');
+                    saved[this.fechaSeleccionada] = this.form;
+                    localStorage.setItem('tmsa_drafts_v95', JSON.stringify(saved));
+                },
+                guardarJornada() {
+                    if (!this.form.bus1) { alert("¡Falta BUS!"); return; }
+                    this.history = this.history.filter(i => i.fecha !== this.fechaSeleccionada);
+                    const nDietas = (this.form.comida === 'SI' ? 1 : 0) + (this.form.cena === 'SI' ? 1 : 0);
+                    this.history.push({ fecha: this.fechaSeleccionada, bus: this.form.bus1, hStr: this.res.total, dieta: nDietas, km: this.res.kmTotales, noctH: this.res.noctMin });
+                    localStorage.setItem('tmsa_history_v95', JSON.stringify(this.history));
+                    window.cloudSave('history', this.history);
+                    alert("✅ Archivado."); this.view = 'historial';
+                },
+                borrarFila(f) { if(confirm("¿Borrar?")){this.history = this.history.filter(i => i.fecha !== f); localStorage.setItem('tmsa_history_v95', JSON.stringify(this.history)); window.cloudSave('history', this.history);}}
+            }
+        }
+    </script>
+</body>
+</html>
